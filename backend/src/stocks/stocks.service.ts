@@ -7,13 +7,32 @@ import { JsonStorageService } from '../storage/json-storage.service';
 import { Stock } from '../entities/stock.entity';
 import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
-import { SupportedStockSymbol } from '../models/stock.interface';
+import { SupportedStockSymbol, IStock } from '../models/stock.interface';
 
 @Injectable()
 export class StocksService {
   private readonly STORAGE_FILE = 'stocks';
 
   constructor(private readonly storageService: JsonStorageService) {}
+
+  /**
+   * Преобразует объект данных в экземпляр класса Stock
+   */
+  private toStockInstance(data: Partial<IStock>): Stock {
+    // Если это уже экземпляр Stock, возвращаем его
+    if (data instanceof Stock) {
+      return data;
+    }
+
+    // Иначе создаем новый экземпляр Stock из данных
+    return new Stock({
+      symbol: data.symbol as SupportedStockSymbol,
+      companyName: data.companyName,
+      isActive: data.isActive,
+      currentPrice: data.currentPrice,
+      historicalData: data.historicalData || [],
+    });
+  }
 
   async create(createStockDto: CreateStockDto): Promise<Stock> {
     const existingStocks =
@@ -42,10 +61,23 @@ export class StocksService {
   }
 
   async findAll(): Promise<Stock[]> {
-    const stocks = await this.storageService.loadData<Stock[]>(
-      this.STORAGE_FILE,
+    const stocksData = await this.storageService.loadData<
+      Stock[] | Record<string, Stock>
+    >(this.STORAGE_FILE);
+
+    if (!stocksData) {
+      return [];
+    }
+
+    // Если данные - массив, преобразуем каждый элемент в экземпляр Stock
+    if (Array.isArray(stocksData)) {
+      return stocksData.map((item) => this.toStockInstance(item));
+    }
+
+    // Если данные - объект, преобразуем каждое значение в экземпляр Stock
+    return Object.values(stocksData).map((stockData) =>
+      this.toStockInstance(stockData),
     );
-    return stocks || [];
   }
 
   async findOne(symbol: string): Promise<Stock> {

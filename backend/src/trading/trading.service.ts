@@ -209,6 +209,10 @@ export class TradingService {
         stock.addHistoricalData(newHistoricalData);
       }
 
+      // if (stock.symbol === 'AAPL') {
+      //   console.log(`AAPL price at ${dateString}: ${stock.currentPrice}`);
+      // }
+
       // Обновляем акцию в хранилище
       await this.stocksService.update(stock.symbol, {
         currentPrice: stock.currentPrice,
