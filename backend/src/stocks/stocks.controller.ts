@@ -78,6 +78,28 @@ export class StocksController {
     return this.stocksService.update(symbol, updateStockDto);
   }
 
+  @Patch(':symbol/trading-status')
+  @ApiOperation({ summary: 'Обновить только статус участия акции в торгах' })
+  @ApiParam({
+    name: 'symbol',
+    description: 'Символ акции (тикер)',
+    example: 'AAPL',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Статус участия акции в торгах обновлен успешно',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Акция с указанным символом не найдена',
+  })
+  updateTradingStatus(
+    @Param('symbol') symbol: string,
+    @Body() body: { isActive: boolean },
+  ) {
+    return this.stocksService.updateTradingStatus(symbol, body.isActive);
+  }
+
   @Delete(':symbol')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Удалить акцию' })
