@@ -58,6 +58,7 @@ const BackButton = styled.button`
   border: none;
   color: #4a90e2;
   font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
   display: flex;
   align-items: center;

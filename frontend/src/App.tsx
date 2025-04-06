@@ -3,6 +3,7 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import styled from "styled-components";
 import BrokersPage from "./pages/BrokersPage";
 import StocksPage from "./pages/StocksPage";
+import MarketSettingsPage from "./pages/MarketSettingsPage";
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -100,6 +101,7 @@ const LoginIcon = styled.div`
   border-radius: 4px;
   transition: background-color 0.2s ease;
 
+
   &:hover {
     background-color: #3a7bc8;
   }
@@ -146,22 +148,7 @@ function App(): React.ReactElement {
         <Routes>
           <Route path="/stocks" element={<StocksPage />} />
           <Route path="/brokers" element={<BrokersPage />} />
-          <Route
-            path="/market-settings"
-            element={
-              <div
-                style={{
-                  width: "100%",
-                  maxWidth: "1200px",
-                  padding: "2rem",
-                  textAlign: "center",
-                }}
-              >
-                <h1>Настройки рынка</h1>
-                <p>Эта функциональность находится в разработке</p>
-              </div>
-            }
-          />
+          <Route path="/market-settings" element={<MarketSettingsPage />} />
           <Route path="*" element={<StocksPage />} />
         </Routes>
       </Content>

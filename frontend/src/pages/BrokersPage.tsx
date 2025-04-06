@@ -90,13 +90,6 @@ const AddButton = styled.button`
   }
 `;
 
-const ContentContainer = styled.div`
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-`;
-
 const Message = styled.div`
   padding: 20px;
   text-align: center;
@@ -184,35 +177,33 @@ const BrokersPage: React.FC = () => {
         </AddButton>
       </PageHeaderContainer>
 
-      <ContentContainer>
-        {loading ? (
-          <Message>Загрузка...</Message>
-        ) : error ? (
-          <ErrorMessage>{error}</ErrorMessage>
-        ) : brokers.length === 0 ? (
-          <Message>Список брокеров пуст. Добавьте первого брокера.</Message>
-        ) : (
-          <Table>
-            <TableHead>
-              <tr>
-                <TableHeader>Имя</TableHeader>
-                <TableHeader>Баланс</TableHeader>
-                <TableHeader>Действия</TableHeader>
-              </tr>
-            </TableHead>
-            <TableBody>
-              {brokers.map((broker) => (
-                <BrokerRow
-                  key={broker.id}
-                  broker={broker}
-                  onEdit={handleOpenModal}
-                  onDelete={handleDeleteBroker}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </ContentContainer>
+      {loading ? (
+        <Message>Загрузка...</Message>
+      ) : error ? (
+        <ErrorMessage>{error}</ErrorMessage>
+      ) : brokers.length === 0 ? (
+        <Message>Список брокеров пуст. Добавьте первого брокера.</Message>
+      ) : (
+        <Table>
+          <TableHead>
+            <tr>
+              <TableHeader>Имя</TableHeader>
+              <TableHeader>Баланс</TableHeader>
+              <TableHeader>Действия</TableHeader>
+            </tr>
+          </TableHead>
+          <TableBody>
+            {brokers.map((broker) => (
+              <BrokerRow
+                key={broker.id}
+                broker={broker}
+                onEdit={handleOpenModal}
+                onDelete={handleDeleteBroker}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {showModal && (
         <ModalOverlay>
