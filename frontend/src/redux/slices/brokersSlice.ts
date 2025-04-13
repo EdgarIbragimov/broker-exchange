@@ -6,7 +6,6 @@ import {
   UpdateBrokerDto,
 } from "../../types";
 import brokersApi from "../../api/brokersApi";
-import { StringLiteral } from "typescript";
 
 //Описываем начальное состояние для редьюсера
 const initialState: BrokersState = {

@@ -41,6 +41,10 @@ const ChartContainer = styled.div`
   padding: 1.5rem;
   margin-top: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 `;
 
 const ChartTitle = styled.h2`
@@ -48,12 +52,24 @@ const ChartTitle = styled.h2`
   font-weight: 600;
   margin-bottom: 1.5rem;
   color: #333;
+
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+`;
+
+const DataTableContainer = styled.div`
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 2rem;
 `;
 
 const DataTable = styled.table`
   width: 100%;
+  min-width: 500px;
   border-collapse: collapse;
-  margin-top: 2rem;
 `;
 
 const TableHeader = styled.th`
@@ -70,10 +86,20 @@ const TableCell = styled.td`
   border-bottom: 1px solid #eaedf3;
 `;
 
+const TableRow = styled.tr`
+  &:hover {
+    background-color: #f8fafc;
+  }
+`;
+
 const Tabs = styled.div`
   display: flex;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #eaedf3;
+
+  @media (max-width: 480px) {
+    margin-bottom: 1rem;
+  }
 `;
 
 const Tab = styled.button<{ $active: boolean }>`
@@ -91,6 +117,11 @@ const Tab = styled.button<{ $active: boolean }>`
   &:hover {
     color: #4a90e2;
   }
+
+  @media (max-width: 480px) {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
 `;
 
 const ResponsiveContainer = styled.div`
@@ -103,6 +134,14 @@ const ResponsiveContainer = styled.div`
 const ChartWrapper = styled.div`
   position: relative;
   height: 400px;
+
+  @media (max-width: 768px) {
+    height: 300px;
+  }
+
+  @media (max-width: 480px) {
+    height: 250px;
+  }
 `;
 
 const ZoomControls = styled.div`
@@ -231,6 +270,7 @@ const StockCharts: React.FC<StockChartsProps> = ({ stock }) => {
             maxRotation: 45,
             minRotation: 0,
             autoSkip: true,
+            maxTicksLimit: window.innerWidth < 768 ? 6 : 10,
           },
           title: {
             display: true,
@@ -309,7 +349,7 @@ const StockCharts: React.FC<StockChartsProps> = ({ stock }) => {
         },
       },
     };
-  }, []);
+  }, [sortedHistory]);
 
   return (
     <ChartContainer>
@@ -346,26 +386,43 @@ const StockCharts: React.FC<StockChartsProps> = ({ stock }) => {
       )}
 
       {activeTab === "table" && (
-        <ResponsiveContainer>
+        <DataTableContainer>
           <DataTable>
             <thead>
               <tr>
                 <TableHeader>Дата</TableHeader>
                 <TableHeader>Цена ($)</TableHeader>
+                <TableHeader>Изменение (%)</TableHeader>
               </tr>
             </thead>
             <tbody>
-              {sortedHistory.map((item, index) => (
-                <tr key={index}>
-                  <TableCell>
-                    {item.parsedDate.toLocaleDateString("ru-RU")}
-                  </TableCell>
-                  <TableCell>${item.price.toFixed(2)}</TableCell>
-                </tr>
-              ))}
+              {sortedHistory.map((item, idx) => {
+                const prevPrice =
+                  idx > 0 ? sortedHistory[idx - 1].price : item.price;
+                const change = ((item.price - prevPrice) / prevPrice) * 100;
+                return (
+                  <TableRow key={item.date}>
+                    <TableCell>
+                      {new Date(item.parsedDate).toLocaleDateString("ru-RU", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </TableCell>
+                    <TableCell>${item.price.toFixed(2)}</TableCell>
+                    <TableCell
+                      style={{
+                        color: change >= 0 ? "#22c55e" : "#ef4444",
+                      }}
+                    >
+                      {change.toFixed(2)}%
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </tbody>
           </DataTable>
-        </ResponsiveContainer>
+        </DataTableContainer>
       )}
     </ChartContainer>
   );

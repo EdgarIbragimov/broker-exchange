@@ -9,13 +9,19 @@ interface StockListProps {
   onViewDetails: (symbol: string) => void;
 }
 
+const TableContainer = styled.div`
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+`;
+
 const Table = styled.table`
   width: 100%;
+  min-width: 600px; // Ensure minimum width for mobile
   border-collapse: collapse;
   background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
 const TableHead = styled.thead`
@@ -30,6 +36,7 @@ const TableHeader = styled.th`
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 `;
 
 const TableBody = styled.tbody``;
@@ -50,27 +57,29 @@ const StockList: React.FC<StockListProps> = ({
   }
 
   return (
-    <Table>
-      <TableHead>
-        <tr>
-          <TableHeader>Символ</TableHeader>
-          <TableHeader>Компания</TableHeader>
-          <TableHeader>Текущая цена</TableHeader>
-          <TableHeader>Торги</TableHeader>
-          <TableHeader>Действия</TableHeader>
-        </tr>
-      </TableHead>
-      <TableBody>
-        {stocks.map((stock) => (
-          <StockRow
-            key={stock.symbol}
-            stock={stock}
-            onToggleTrading={onToggleTrading}
-            onViewDetails={onViewDetails}
-          />
-        ))}
-      </TableBody>
-    </Table>
+    <TableContainer>
+      <Table>
+        <TableHead>
+          <tr>
+            <TableHeader>Символ</TableHeader>
+            <TableHeader>Компания</TableHeader>
+            <TableHeader>Текущая цена</TableHeader>
+            <TableHeader>Торги</TableHeader>
+            <TableHeader>Действия</TableHeader>
+          </tr>
+        </TableHead>
+        <TableBody>
+          {stocks.map((stock) => (
+            <StockRow
+              key={stock.symbol}
+              stock={stock}
+              onToggleTrading={onToggleTrading}
+              onViewDetails={onViewDetails}
+            />
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 };
 

@@ -33,6 +33,7 @@ const LogoContainer = styled.div`
   display: flex;
   align-items: center;
   white-space: nowrap;
+  flex: 0 0 auto;
 
   @media (max-width: 768px) {
     width: 100%;
@@ -53,16 +54,19 @@ const Logo = styled.h1`
 
 const Navigation = styled.nav`
   display: flex;
-  gap: 4rem;
+  flex: 1;
+  justify-content: space-around;
+  margin-left: 50px;
+  max-width: 600px;
 
   @media (max-width: 768px) {
     width: 100%;
-    justify-content: center;
-    gap: 2rem;
+    margin-left: 0;
+    justify-content: space-between;
   }
 
   @media (max-width: 480px) {
-    gap: 1rem;
+    justify-content: space-around;
   }
 `;
 
@@ -87,32 +91,6 @@ const StyledNavLink = styled(NavLink)`
 
   @media (max-width: 480px) {
     font-size: 0.9rem;
-  }
-`;
-
-const LoginIcon = styled.div`
-  font-size: 1rem;
-  cursor: pointer;
-  color: #fff;
-  font-weight: 500;
-  white-space: nowrap;
-  background-color: #4a90e2;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-
-
-  &:hover {
-    background-color: #3a7bc8;
-  }
-
-  @media (max-width: 768px) {
-    width: 100%;
-    text-align: center;
-    padding: 0.5rem 0;
-    border-top: 1px solid #eee;
-    margin-top: 0.5rem;
-    border-radius: 0;
   }
 `;
 
@@ -142,7 +120,6 @@ function App(): React.ReactElement {
           <StyledNavLink to="/brokers">Брокеры</StyledNavLink>
           <StyledNavLink to="/market-settings">Настройки рынка</StyledNavLink>
         </Navigation>
-        <LoginIcon>Выйти</LoginIcon>
       </Header>
       <Content>
         <Routes>

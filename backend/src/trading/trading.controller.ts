@@ -12,7 +12,7 @@ import { TradingSettingsDto } from './dto/trading-settings.dto';
 import {
   ITradingSettings,
   ITradingStatus,
-} from './models/trading-settings.interface';
+} from '../models/trading-settings.interface';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('trading')
@@ -62,5 +62,16 @@ export class TradingController {
   })
   stopTrading(): void {
     this.tradingService.stopTrading();
+  }
+
+  @Post('reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Сбросить данные симуляции' })
+  @ApiResponse({
+    status: 200,
+    description: 'Данные симуляции успешно сброшены',
+  })
+  async resetSimulation(): Promise<ITradingStatus> {
+    return this.tradingService.resetSimulation();
   }
 }
