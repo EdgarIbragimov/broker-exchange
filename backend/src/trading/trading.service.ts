@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   ITradingSettings,
   ITradingStatus,
-} from './models/trading-settings.interface';
+} from '../models/trading-settings.interface';
 import { JsonStorageService } from '../storage/json-storage.service';
 import { StocksService } from '../stocks/stocks.service';
 import { TradingSettingsDto } from './dto/trading-settings.dto';

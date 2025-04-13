@@ -12,7 +12,7 @@ import { TradingSettingsDto } from './dto/trading-settings.dto';
 import {
   ITradingSettings,
   ITradingStatus,
-} from './models/trading-settings.interface';
+} from '../models/trading-settings.interface';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('trading')
