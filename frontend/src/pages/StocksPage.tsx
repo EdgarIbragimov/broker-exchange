@@ -70,9 +70,14 @@ const BackButton = styled.button`
   display: flex;
   align-items: center;
   padding: 0.5rem 0;
+  margin-bottom: 1rem;
 
   &:hover {
     text-decoration: underline;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.8rem;
   }
 `;
 
@@ -105,6 +110,11 @@ const TradingInfo = styled.div`
   border-radius: 8px;
   background-color: #f7fafc;
   border: 1px solid #e2e8f0;
+
+  @media (max-width: 480px) {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
 `;
 
 const InfoRow = styled.div`
@@ -113,9 +123,14 @@ const InfoRow = styled.div`
   gap: 0.5rem;
   font-size: 0.875rem;
   color: #4a5568;
+  flex-wrap: wrap;
 
   &:not(:last-child) {
     margin-bottom: 0.25rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.8rem;
   }
 `;
 
@@ -145,6 +160,12 @@ const StocksPage: React.FC = () => {
       unsubscribe();
     };
   }, [dispatch]);
+
+  useEffect(() => {
+    if (loading && stocks.length === 0) {
+      dispatch(fetchStocks());
+    }
+  }, [loading, dispatch]);
 
   const handleToggleTrading = (symbol: string, useInTrading: boolean) => {
     dispatch(toggleStockTrading({ symbol, useInTrading }));

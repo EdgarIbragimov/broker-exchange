@@ -13,12 +13,19 @@ import BrokerForm from "../components/BrokerForm";
 
 const Table = styled.table`
   width: 100%;
+  min-width: 500px;
   border-collapse: collapse;
   background-color: white;
   border-radius: 8px;
-  overflow: hidden;
+  margin-top: 0;
+`;
+
+const TableContainer = styled.div`
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
+  border-radius: 8px;
 `;
 
 const TableHead = styled.thead`
@@ -33,6 +40,7 @@ const TableHeader = styled.th`
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 
   &:last-child {
     text-align: right;
@@ -184,25 +192,27 @@ const BrokersPage: React.FC = () => {
       ) : brokers.length === 0 ? (
         <Message>Список брокеров пуст. Добавьте первого брокера.</Message>
       ) : (
-        <Table>
-          <TableHead>
-            <tr>
-              <TableHeader>Имя</TableHeader>
-              <TableHeader>Баланс</TableHeader>
-              <TableHeader>Действия</TableHeader>
-            </tr>
-          </TableHead>
-          <TableBody>
-            {brokers.map((broker) => (
-              <BrokerRow
-                key={broker.id}
-                broker={broker}
-                onEdit={handleOpenModal}
-                onDelete={handleDeleteBroker}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <tr>
+                <TableHeader>Имя</TableHeader>
+                <TableHeader>Баланс</TableHeader>
+                <TableHeader>Действия</TableHeader>
+              </tr>
+            </TableHead>
+            <TableBody>
+              {brokers.map((broker) => (
+                <BrokerRow
+                  key={broker.id}
+                  broker={broker}
+                  onEdit={handleOpenModal}
+                  onDelete={handleDeleteBroker}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
       {showModal && (

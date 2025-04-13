@@ -14,6 +14,11 @@ const initialState: MarketSettingsState = {
   error: null,
 };
 
+// Reusable error handler
+const handleApiError = (error: any) => {
+  return error.response?.data?.message || "Operation failed";
+};
+
 // Async thunks
 export const fetchTradingSettings = createAsyncThunk(
   "marketSettings/fetchSettings",
@@ -21,18 +26,13 @@ export const fetchTradingSettings = createAsyncThunk(
     try {
       const settings = await tradingApi.getTradingSettings();
       return {
-        tradingStartDate: settings.startDate.toISOString(),
+        tradingStartDate: settings.startDate,
         dateChangeRate: settings.speedFactor,
-        currentDate: settings.currentDate
-          ? settings.currentDate.toISOString()
-          : "",
+        currentDate: settings.currentDate || "",
         isTradingActive: settings.isActive,
       };
     } catch (error: any) {
-      console.error("Redux error fetching settings:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to load trading settings"
-      );
+      return rejectWithValue(handleApiError(error));
     }
   }
 );
@@ -44,28 +44,21 @@ export const updateTradingSettings = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      // Создаем объект, соответствующий DTO на бэкенде
       const settingsDTO: TradingSettingsDTO = {
         startDate,
         speedFactor,
-        // isActive не отправляем, чтобы не менять текущее состояние
       };
 
       const settings = await tradingApi.updateTradingSettings(settingsDTO);
 
       return {
-        tradingStartDate: settings.startDate.toISOString(),
+        tradingStartDate: settings.startDate,
         dateChangeRate: settings.speedFactor,
-        currentDate: settings.currentDate
-          ? settings.currentDate.toISOString()
-          : "",
+        currentDate: settings.currentDate || "",
         isTradingActive: settings.isActive,
       };
     } catch (error: any) {
-      console.error("Redux error updating settings:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to update trading settings"
-      );
+      return rejectWithValue(handleApiError(error));
     }
   }
 );
@@ -77,13 +70,10 @@ export const startTrading = createAsyncThunk(
       const tradingStatus = await tradingApi.startTrading();
       return {
         isTradingActive: tradingStatus.isActive,
-        currentDate: tradingStatus.currentDate.toISOString(),
+        currentDate: tradingStatus.currentDate,
       };
     } catch (error: any) {
-      console.error("Redux error starting trading:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to start trading"
-      );
+      return rejectWithValue(handleApiError(error));
     }
   }
 );
@@ -97,10 +87,22 @@ export const stopTrading = createAsyncThunk(
         isTradingActive: false,
       };
     } catch (error: any) {
-      console.error("Redux error stopping trading:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to stop trading"
-      );
+      return rejectWithValue(handleApiError(error));
+    }
+  }
+);
+
+export const resetSimulation = createAsyncThunk(
+  "marketSettings/resetSimulation",
+  async (_, { rejectWithValue }) => {
+    try {
+      const tradingStatus = await tradingApi.resetSimulation();
+      return {
+        isTradingActive: tradingStatus.isActive,
+        currentDate: tradingStatus.currentDate,
+      };
+    } catch (error: any) {
+      return rejectWithValue(handleApiError(error));
     }
   }
 );
@@ -111,7 +113,7 @@ const marketSettingsSlice = createSlice({
   initialState,
   reducers: {
     updateTradingStatus: (state, action: PayloadAction<TradingStatus>) => {
-      state.currentDate = action.payload.currentDate.toISOString();
+      state.currentDate = action.payload.currentDate;
       state.isTradingActive = action.payload.isActive;
     },
     resetErrors: (state) => {
@@ -119,28 +121,42 @@ const marketSettingsSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder
-      // Fetch settings
-      .addCase(fetchTradingSettings.pending, (state) => {
+    // Generic pending handler
+    const addPendingCase = (thunk: any) => {
+      builder.addCase(thunk.pending, (state) => {
         state.loading = true;
         state.error = null;
-      })
+      });
+    };
+
+    // Generic rejected handler
+    const addRejectedCase = (thunk: any) => {
+      builder.addCase(thunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+    };
+
+    // Add pending and rejected cases for all thunks
+    [
+      fetchTradingSettings,
+      updateTradingSettings,
+      startTrading,
+      stopTrading,
+      resetSimulation,
+    ].forEach((thunk) => {
+      addPendingCase(thunk);
+      addRejectedCase(thunk);
+    });
+
+    // Specific fulfilled handlers
+    builder
       .addCase(fetchTradingSettings.fulfilled, (state, action) => {
         state.loading = false;
         state.tradingStartDate = action.payload.tradingStartDate;
         state.dateChangeRate = action.payload.dateChangeRate;
         state.currentDate = action.payload.currentDate;
         state.isTradingActive = action.payload.isTradingActive;
-      })
-      .addCase(fetchTradingSettings.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      // Update settings
-      .addCase(updateTradingSettings.pending, (state) => {
-        state.loading = true;
-        state.error = null;
       })
       .addCase(updateTradingSettings.fulfilled, (state, action) => {
         state.loading = false;
@@ -149,38 +165,19 @@ const marketSettingsSlice = createSlice({
         state.currentDate = action.payload.currentDate;
         state.isTradingActive = action.payload.isTradingActive;
       })
-      .addCase(updateTradingSettings.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      // Start trading
-      .addCase(startTrading.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(startTrading.fulfilled, (state, action) => {
         state.loading = false;
         state.isTradingActive = action.payload.isTradingActive;
         state.currentDate = action.payload.currentDate;
       })
-      .addCase(startTrading.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      // Stop trading
-      .addCase(stopTrading.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(stopTrading.fulfilled, (state, action) => {
         state.loading = false;
         state.isTradingActive = action.payload.isTradingActive;
       })
-      .addCase(stopTrading.rejected, (state, action) => {
+      .addCase(resetSimulation.fulfilled, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.isTradingActive = action.payload.isTradingActive;
+        state.currentDate = action.payload.currentDate;
       });
   },
 });

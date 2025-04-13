@@ -2,15 +2,15 @@ import { io, Socket } from "socket.io-client";
 
 // Types
 export interface TradingSettings {
-  startDate: Date;
+  startDate: string;
   speedFactor: number;
   isActive: boolean;
-  currentDate?: Date;
+  currentDate?: string;
 }
 
 export interface TradingStatus {
   isActive: boolean;
-  currentDate: Date;
+  currentDate: string;
   stockPrices: Array<{
     symbol: string;
     price: string;
@@ -43,6 +43,18 @@ export const initializeSocket = (onConnect?: () => void): Socket => {
   return socket;
 };
 
+// Helper to safely parse dates
+const ensureDateString = (date: any): string => {
+  if (!date) return new Date().toISOString();
+
+  try {
+    return new Date(date).toISOString();
+  } catch (error) {
+    console.error("Invalid date format:", date);
+    return new Date().toISOString();
+  }
+};
+
 // Subscribe to trading status updates
 export const subscribeTradingStatus = (
   callback: (status: TradingStatus) => void
@@ -51,13 +63,9 @@ export const subscribeTradingStatus = (
 
   socket.on("tradingStatus", (status: any) => {
     try {
-      // Parse dates from strings
       const parsedStatus: TradingStatus = {
-        ...status,
-        isActive: status.isActive || false,
-        currentDate: status.currentDate
-          ? new Date(status.currentDate)
-          : new Date(),
+        isActive: Boolean(status.isActive),
+        currentDate: ensureDateString(status.currentDate),
         stockPrices: Array.isArray(status.stockPrices)
           ? status.stockPrices
           : [],
@@ -82,16 +90,12 @@ export const subscribeTradingSettings = (
 
   socket.on("tradingSettings", (settings: any) => {
     try {
-      // Parse dates from strings
       const parsedSettings: TradingSettings = {
-        ...settings,
-        startDate: settings.startDate
-          ? new Date(settings.startDate)
-          : new Date(),
-        speedFactor: settings.speedFactor || 1,
-        isActive: settings.isActive || false,
+        startDate: ensureDateString(settings.startDate),
+        speedFactor: Number(settings.speedFactor) || 1,
+        isActive: Boolean(settings.isActive),
         currentDate: settings.currentDate
-          ? new Date(settings.currentDate)
+          ? ensureDateString(settings.currentDate)
           : undefined,
       };
       callback(parsedSettings);

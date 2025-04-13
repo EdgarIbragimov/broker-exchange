@@ -102,6 +102,14 @@ const stocksSlice = createSlice({
         }
       });
     },
+    // Редьюсер для сброса данных акций
+    resetStockData: (state) => {
+      // Сбрасываем состояние, но оставляем список акций до последующей загрузки
+      state.stocks = [];
+      state.selectedStock = null;
+      state.loading = true;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -170,5 +178,6 @@ const stocksSlice = createSlice({
   },
 });
 
-export const { setSelectedStock, updateStockPrices } = stocksSlice.actions;
+export const { setSelectedStock, updateStockPrices, resetStockData } =
+  stocksSlice.actions;
 export default stocksSlice.reducer;

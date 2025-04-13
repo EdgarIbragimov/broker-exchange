@@ -10,9 +10,14 @@ import {
   stopTrading,
   resetErrors,
   updateTradingStatus,
+  resetSimulation,
 } from "../redux/slices/marketSettingsSlice";
 import { initializeSocket, subscribeTradingStatus } from "../api/socketApi";
-import { updateStockPrices } from "../redux/slices/stocksSlice";
+import {
+  updateStockPrices,
+  fetchStocks,
+  resetStockData,
+} from "../redux/slices/stocksSlice";
 
 // Styled components
 const PageContainer = styled.div`
@@ -162,6 +167,16 @@ const MarketSettingsPage: React.FC = () => {
   );
   const [speedFactor, setSpeedFactor] = useState<string>("1");
 
+  // Helper for date conversion
+  const formatISOtoDateInput = (isoString: string): string => {
+    try {
+      return isoString ? new Date(isoString).toISOString().slice(0, 10) : "";
+    } catch (error) {
+      console.error("Invalid date format:", isoString);
+      return new Date().toISOString().slice(0, 10);
+    }
+  };
+
   // Reset errors when component mounts
   useEffect(() => {
     dispatch(resetErrors());
@@ -169,69 +184,51 @@ const MarketSettingsPage: React.FC = () => {
 
   // Initialize socket and fetch settings
   useEffect(() => {
-    // Initialize WebSocket connection
-    const socket = initializeSocket();
-
-    // Subscribe to trading status updates
     const unsubscribe = subscribeTradingStatus((status) => {
-      // Update stock prices
       dispatch(updateStockPrices(status));
-      // Update trading status
       dispatch(updateTradingStatus(status));
     });
 
-    // Fetch current trading settings
     dispatch(fetchTradingSettings());
 
-    // Cleanup function
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, [dispatch]);
 
   // Update local form values when settings are loaded
   useEffect(() => {
     if (tradingStartDate) {
-      try {
-        setStartDate(new Date(tradingStartDate).toISOString().slice(0, 10));
-      } catch (error) {
-        console.error("Invalid date format for startDate:", tradingStartDate);
-        setStartDate(new Date().toISOString().slice(0, 10));
-      }
+      setStartDate(formatISOtoDateInput(tradingStartDate));
     }
+
     if (dateChangeRate !== undefined && !isNaN(dateChangeRate)) {
       setSpeedFactor(String(dateChangeRate));
     }
   }, [tradingStartDate, dateChangeRate]);
 
   const handleSaveSettings = () => {
-    // Сбрасываем ошибки перед отправкой запроса
     dispatch(resetErrors());
 
     const speedFactorNumber = parseInt(speedFactor, 10);
-    if (isNaN(speedFactorNumber)) {
-      alert("Пожалуйста, введите корректное числовое значение для интервала");
+    if (isNaN(speedFactorNumber) || speedFactorNumber < 1) {
+      alert("Please enter a valid number for the interval (minimum 1)");
       return;
     }
 
-    let parsedStartDate: Date;
     try {
-      parsedStartDate = new Date(startDate);
-      // Проверяем, что дата валидна
+      const parsedStartDate = new Date(startDate);
       if (isNaN(parsedStartDate.getTime())) {
         throw new Error("Invalid date");
       }
-    } catch (error) {
-      alert("Пожалуйста, введите корректную дату");
-      return;
-    }
 
-    dispatch(
-      updateTradingSettings({
-        startDate: parsedStartDate,
-        speedFactor: speedFactorNumber,
-      })
-    );
+      dispatch(
+        updateTradingSettings({
+          startDate: parsedStartDate,
+          speedFactor: speedFactorNumber,
+        })
+      );
+    } catch (error) {
+      alert("Please enter a valid date");
+    }
   };
 
   const handleStartTrading = () => {
@@ -244,18 +241,34 @@ const MarketSettingsPage: React.FC = () => {
     dispatch(stopTrading());
   };
 
-  // Format date for display
+  const handleResetSimulation = () => {
+    dispatch(resetErrors());
+
+    // First reset stock data in the store
+    dispatch(resetStockData());
+
+    // Reset simulation on the server
+    dispatch(resetSimulation())
+      .unwrap()
+      .then(() => dispatch(fetchStocks()).unwrap())
+      .then(() => dispatch(fetchTradingSettings()).unwrap())
+      .catch((error) => {
+        console.error("Error resetting simulation:", error);
+      });
+  };
+
+  // Format date for display in UI
   const formatDate = (dateString: string) => {
-    if (!dateString) return "Не определена";
+    if (!dateString) return "Not set";
+
     try {
       return new Date(dateString).toLocaleDateString("ru-RU", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Формат даты некорректен";
+    } catch {
+      return "Invalid date format";
     }
   };
 
@@ -308,6 +321,13 @@ const MarketSettingsPage: React.FC = () => {
               Начать торги
             </Button>
           )}
+
+          <Button
+            onClick={handleResetSimulation}
+            disabled={loading || isTradingActive}
+          >
+            Сбросить данные симуляции
+          </Button>
         </ButtonGroup>
       </Card>
 
