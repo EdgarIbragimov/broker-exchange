@@ -63,4 +63,15 @@ export class TradingController {
   stopTrading(): void {
     this.tradingService.stopTrading();
   }
+
+  @Post('reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Сбросить данные симуляции' })
+  @ApiResponse({
+    status: 200,
+    description: 'Данные симуляции успешно сброшены',
+  })
+  async resetSimulation(): Promise<ITradingStatus> {
+    return this.tradingService.resetSimulation();
+  }
 }

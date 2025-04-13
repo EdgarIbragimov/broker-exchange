@@ -10,14 +10,18 @@ import { Stock } from '../entities/stock.entity';
 import { IStockPrice } from '../models/stock.interface';
 import { Subject, interval, Subscription } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class TradingService {
   private readonly logger = new Logger(TradingService.name);
   private readonly SETTINGS_FILE = 'trading-settings';
+  private readonly ORIGINAL_STOCKS_BACKUP_FILE = 'original-stocks-backup';
   private settings: ITradingSettings;
   private tradingSubscription: Subscription | null;
   private tradingStatusSubject = new Subject<ITradingStatus>();
+  private originalDataSaved = false;
 
   constructor(
     private readonly storageService: JsonStorageService,
@@ -37,14 +41,8 @@ export class TradingService {
       this.SETTINGS_FILE,
     );
     if (settings) {
-      // Преобразуем строки дат в объекты Date
-      this.settings = {
-        ...settings,
-        startDate: new Date(settings.startDate),
-        currentDate: settings.currentDate
-          ? new Date(settings.currentDate)
-          : undefined,
-      };
+      // Используем настройки как есть, так как они уже хранятся как строки
+      this.settings = settings;
 
       // Если торги были активны при выключении сервера, перезапускаем их
       if (this.settings.isActive) {
@@ -53,7 +51,7 @@ export class TradingService {
     } else {
       // Настройки по умолчанию
       this.settings = {
-        startDate: new Date(),
+        startDate: new Date().toISOString(), // Используем ISO строку
         speedFactor: 1,
         isActive: false,
       };
@@ -76,7 +74,11 @@ export class TradingService {
 
     this.settings = {
       ...this.settings,
-      startDate: settingsDto.startDate,
+      // Преобразуем Date в строку ISO
+      startDate:
+        settingsDto.startDate instanceof Date
+          ? settingsDto.startDate.toISOString()
+          : settingsDto.startDate,
       speedFactor: settingsDto.speedFactor,
       isActive: settingsDto.isActive ?? this.settings.isActive,
     };
@@ -98,13 +100,18 @@ export class TradingService {
       this.stopTrading();
     }
 
+    // Save original stock data if not already saved
+    if (!this.originalDataSaved) {
+      await this.saveOriginalStocksData();
+      this.originalDataSaved = true;
+    }
+
     this.settings.isActive = true;
-    this.settings.currentDate = new Date(this.settings.startDate);
+    this.settings.currentDate = this.settings.startDate;
     await this.saveSettings();
 
-    // Интервал в миллисекундах (speedFactor в секундах * 1000)
+    // Start the interval for trading simulation
     const intervalTime = this.settings.speedFactor * 1000;
-
     this.tradingSubscription = interval(intervalTime)
       .pipe(takeWhile(() => this.settings.isActive))
       .subscribe(() => {
@@ -113,9 +120,8 @@ export class TradingService {
         });
       });
 
-    // Сразу вызываем первую итерацию
-    const status = await this.simulateTrading();
-    return status;
+    // Run first iteration immediately
+    return this.simulateTrading();
   }
 
   stopTrading(): void {
@@ -132,41 +138,35 @@ export class TradingService {
 
   private async simulateTrading(): Promise<ITradingStatus> {
     try {
-      // Увеличиваем текущую дату на один день
-      const currentDate = new Date(
+      // Advance current date by one day
+      const currentDateObj = new Date(
         this.settings.currentDate || this.settings.startDate,
       );
-      currentDate.setDate(currentDate.getDate() + 1);
-      this.settings.currentDate = currentDate;
-
-      // Сохраняем обновленные настройки
+      currentDateObj.setDate(currentDateObj.getDate() + 1);
+      this.settings.currentDate = currentDateObj.toISOString();
       await this.saveSettings();
 
-      // Получаем все акции
+      // Get active stocks
       const stocks = await this.stocksService.findAll();
-
-      // Акции активные в торгах
       const activeStocks = stocks.filter((stock) => stock.isActive);
 
-      // Обновляем цены акций на основе исторических данных
+      // Update stock prices based on historical data
       const updatedPrices = await this.updateStockPrices(
         activeStocks,
-        currentDate,
+        currentDateObj,
       );
 
-      // Создаем статус торгов
+      // Create and send trading status
       const status: ITradingStatus = {
         isActive: this.settings.isActive,
-        currentDate,
+        currentDate: this.settings.currentDate,
         stockPrices: updatedPrices.map((stock) => ({
           symbol: stock.symbol,
           price: stock.currentPrice,
         })),
       };
 
-      // Отправляем обновленный статус подписчикам
       this.tradingStatusSubject.next(status);
-
       return status;
     } catch (error: unknown) {
       this.logger.error(
@@ -237,5 +237,162 @@ export class TradingService {
     const day = date.getDate();
     const year = date.getFullYear();
     return `${month}/${day}/${year}`;
+  }
+
+  // Метод для сохранения копии исходных данных акций
+  private async saveOriginalStocksData(): Promise<void> {
+    try {
+      this.logger.log('Сохранение копии исходных данных акций...');
+
+      // Получаем все акции
+      const stocks = await this.stocksService.findAll();
+
+      // Создаем объект для хранения данных
+      const originalStocksData = {};
+
+      // Сохраняем данные каждой акции
+      for (const stock of stocks) {
+        originalStocksData[stock.symbol] = {
+          symbol: stock.symbol,
+          companyName: stock.companyName,
+          isActive: stock.isActive,
+          currentPrice: stock.currentPrice,
+          historicalData: [...stock.historicalData],
+        };
+      }
+
+      // Сохраняем данные в файл
+      await this.storageService.saveData(
+        this.ORIGINAL_STOCKS_BACKUP_FILE,
+        originalStocksData,
+      );
+
+      this.logger.log('Копия исходных данных акций успешно сохранена');
+    } catch (error) {
+      this.logger.error(
+        `Ошибка при сохранении исходных данных акций: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Сбрасывает данные симуляции к первоначальному состоянию
+   * Восстанавливает исходные котировки и текущую дату из бэкапа
+   */
+  async resetSimulation(): Promise<ITradingStatus> {
+    // Останавливаем текущую симуляцию, если она активна
+    if (this.tradingSubscription) {
+      this.stopTrading();
+    }
+
+    try {
+      this.logger.log('Начало сброса данных симуляции...');
+
+      // Получаем все акции
+      const stocks = await this.stocksService.findAll();
+
+      // Загружаем исходные данные
+      const originalStocksDataOrNull = await this.storageService.loadData(
+        this.ORIGINAL_STOCKS_BACKUP_FILE,
+      );
+
+      let originalStocksData: Record<string, any>;
+
+      // Если бэкап не найден, используем данные из основного файла stocks.json
+      if (!originalStocksDataOrNull) {
+        this.logger.warn(
+          'Бэкап исходных данных не найден, используем stocks.json',
+        );
+
+        const STORAGE_FILE = path.resolve(
+          process.cwd(),
+          'storage',
+          'stocks.json',
+        );
+
+        if (!fs.existsSync(STORAGE_FILE)) {
+          throw new Error(
+            `Файл с исходными данными не найден: ${STORAGE_FILE}`,
+          );
+        }
+
+        this.logger.log(`Загрузка исходных данных из файла: ${STORAGE_FILE}`);
+
+        const rawData = fs.readFileSync(STORAGE_FILE, 'utf8');
+        originalStocksData = JSON.parse(rawData) as Record<string, any>;
+      } else {
+        this.logger.log(
+          'Найден бэкап исходных данных, используем его для восстановления',
+        );
+        originalStocksData = originalStocksDataOrNull;
+      }
+
+      // Создаем объект для хранения восстановленных акций
+      const restoredStocks = {};
+
+      // Перебираем все акции и обновляем их данные из исходных данных
+      for (const stock of stocks) {
+        const originalStock = originalStocksData[stock.symbol];
+
+        if (originalStock) {
+          // Устанавливаем текущую цену на основе исходных данных
+          stock.updateCurrentPrice(originalStock.currentPrice);
+
+          // Заменяем исторические данные исходными
+          stock.historicalData = [...originalStock.historicalData];
+
+          // Добавляем в объект восстановленных акций
+          restoredStocks[stock.symbol] = {
+            symbol: stock.symbol,
+            companyName: originalStock.companyName,
+            isActive: stock.isActive, // Сохраняем текущий статус активности
+            currentPrice: originalStock.currentPrice,
+            historicalData: [...originalStock.historicalData],
+          };
+
+          this.logger.log(`Восстановлены данные для акции: ${stock.symbol}`);
+        } else {
+          this.logger.warn(
+            `Не найдены исходные данные для акции: ${stock.symbol}`,
+          );
+
+          // Добавляем текущую акцию, если она не найдена в исходных данных
+          restoredStocks[stock.symbol] = {
+            symbol: stock.symbol,
+            companyName: stock.companyName,
+            isActive: stock.isActive,
+            currentPrice: stock.currentPrice,
+            historicalData: [],
+          };
+        }
+      }
+
+      // Сохраняем восстановленные данные акций в файл
+      await this.storageService.saveData('stocks', restoredStocks);
+
+      // Восстанавливаем исходную текущую дату, сбрасывая её к стартовой дате
+      this.settings.currentDate = this.settings.startDate;
+      await this.saveSettings();
+
+      // Создаем статус торгов для возврата
+      const status: ITradingStatus = {
+        isActive: false,
+        currentDate: this.settings.startDate,
+        stockPrices: stocks.map((stock) => ({
+          symbol: stock.symbol,
+          price: stock.currentPrice,
+        })),
+      };
+
+      // Отправляем обновленный статус подписчикам
+      this.tradingStatusSubject.next(status);
+
+      this.logger.log('Сброс данных симуляции успешно завершен.');
+      return status;
+    } catch (error) {
+      this.logger.error(`Ошибка при сбросе данных симуляции: ${error.message}`);
+      throw error;
+    }
   }
 }

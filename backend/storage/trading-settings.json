@@ -1,6 +1,6 @@
 {
   "startDate": "2025-04-13T00:00:00.000Z",
-  "speedFactor": 4,
+  "speedFactor": 1,
   "isActive": false,
-  "currentDate": "2025-05-26T00:00:00.000Z"
+  "currentDate": "2025-04-13T00:00:00.000Z"
 }

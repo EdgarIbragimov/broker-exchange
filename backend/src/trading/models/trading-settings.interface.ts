@@ -1,13 +1,13 @@
 export interface ITradingSettings {
-  startDate: Date; // Дата начала торгов
+  startDate: string; // Дата начала торгов
   speedFactor: number; // Скорость смены дат в секундах
   isActive: boolean; // Активны ли торги
-  currentDate?: Date; // Текущая имитируемая дата торгов
+  currentDate?: string; // Текущая имитируемая дата торгов
 }
 
 export interface ITradingStatus {
   isActive: boolean; // Активны ли торги
-  currentDate: Date; // Текущая имитируемая дата
+  currentDate: string; // Текущая имитируемая дата
   stockPrices: {
     // Текущие цены акций
     symbol: string;
